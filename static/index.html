@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WPBrigade Admin Chatbot</title>
+  <style>
+    body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; max-width: 800px; margin: auto; }
+    .box { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    input { padding: 8px; width: 70%; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: white; }
+    button { padding: 8px 15px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #chatView { display: none; }
+    #msgs { height: 220px; overflow-y: auto; border: 1px solid #334155; padding: 10px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h2>WPBrigade Admin Chatbot</h2>
+
+  <div id="loginView" class="box">
+    <h3>Email Auto-Login</h3>
+    <input id="emailInp" type="email" value="admin@wpbrigade.com" />
+    <button onclick="login()">Auto-Login</button>
+    <p id="err" style="color: #f87171;"></p>
+  </div>
+
+  <div id="chatView">
+    <div class="box">
+      <div id="msgs"></div>
+      <input id="msgInp" placeholder="Type command here..." />
+      <button onclick="sendChat()">Send</button>
+    </div>
+    <div class="box">
+      <h3>System Users</h3>
+      <div id="usersBox"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentEmail = "";
+
+    function showUsers(users) {
+      document.getElementById("usersBox").innerHTML = users
+        .map(u => `<p><b>${u.name}</b> (${u.email}) | Phone: ${u.phone} | City: ${u.city}</p>`)
+        .join("");
+    }
+
+    async function login() {
+      const email = document.getElementById("emailInp").value.trim();
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        document.getElementById("err").innerText = data.detail;
+        return;
+      }
+      currentEmail = data.user.email;
+      document.getElementById("loginView").style.display = "none";
+      document.getElementById("chatView").style.display = "block";
+      document.getElementById("msgs").innerHTML = `<p><b>Bot:</b> Welcome ${data.user.name}!</p>`;
+      showUsers(data.users);
+    }
+
+    async function sendChat() {
+      const inp = document.getElementById("msgInp");
+      const message = inp.value.trim();
+      if (!message) return;
+      inp.value = "";
+      const m = document.getElementById("msgs");
+      m.innerHTML += `<p><b>You:</b> ${message}</p>`;
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentEmail, message })
+      });
+      const data = await res.json();
+      m.innerHTML += `<p><b>Bot:</b> ${data.reply}</p>`;
+      m.scrollTop = m.scrollHeight;
+      if (data.users) showUsers(data.users);
+    }
+  </script>
+</body>
+</html>
